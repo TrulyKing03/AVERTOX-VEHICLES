@@ -1,0 +1,34 @@
+vehicles:
+  horse:
+    item: HORSE_SPAWN_EGG
+    price: 10000
+    speed: 0.225
+    armor: AIR
+    color: BLACK
+    style: WHITE_DOTS
+    glowing: false
+
+  boats:
+    oak:
+      enabled: true
+      display-name: Oak Boat
+      item: OAK_BOAT
+      type: OAK
+      price: 6000
+      speed: 0.40
+
+    spruce:
+      enabled: true
+      display-name: Spruce Boat
+      item: SPRUCE_BOAT
+      type: SPRUCE
+      price: 6200
+      speed: 0.40
+
+    birch:
+      enabled: true
+      display-name: Birch Boat
+      item: BIRCH_BOAT
+      type: BIRCH
+      price: 6200
+      speed: 0.40
