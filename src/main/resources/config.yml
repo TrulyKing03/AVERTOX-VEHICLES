@@ -1,5 +1,20 @@
+remove-vanilla-boat-recipes: true
+
+economy:
+  enabled: true
+  starting-balance: 25000
+  currency-symbol: "$"
+
+shop:
+  title: "&6&lAvertox Vehicles"
+  rows: 3
+  filler-material: GRAY_STAINED_GLASS_PANE
+  horse-slot: 11
+  boat-start-slot: 13
+
 vehicles:
   horse:
+    display-name: "&6Royal Horse"
     item: HORSE_SPAWN_EGG
     price: 10000
     speed: 0.225
@@ -11,7 +26,7 @@ vehicles:
   boats:
     oak:
       enabled: true
-      display-name: Oak Boat
+      display-name: "&bOak Boat"
       item: OAK_BOAT
       type: OAK
       price: 6000
@@ -19,7 +34,7 @@ vehicles:
 
     spruce:
       enabled: true
-      display-name: Spruce Boat
+      display-name: "&bSpruce Boat"
       item: SPRUCE_BOAT
       type: SPRUCE
       price: 6200
@@ -27,7 +42,7 @@ vehicles:
 
     birch:
       enabled: true
-      display-name: Birch Boat
+      display-name: "&bBirch Boat"
       item: BIRCH_BOAT
       type: BIRCH
       price: 6200

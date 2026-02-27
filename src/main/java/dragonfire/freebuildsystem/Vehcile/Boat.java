@@ -3,19 +3,23 @@ package dragonfire.freebuildsystem.Vehcile;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 
-public class Boat extends Vehicle{
+import java.util.List;
+
+public class Boat extends Vehicle {
     private final org.bukkit.entity.Boat.Type boatType;
 
-    public Boat(Material item, Location location, double speed, Plugin plugin) {
-        this(item, location, speed, plugin, org.bukkit.entity.Boat.Type.OAK);
-    }
-
-    public Boat(Material item, Location location, double speed, Plugin plugin, org.bukkit.entity.Boat.Type boatType) {
-        super(item, location, speed, plugin);
+    public Boat(
+            Material tokenMaterial,
+            String displayName,
+            List<String> lore,
+            double speed,
+            JavaPlugin plugin,
+            org.bukkit.entity.Boat.Type boatType
+    ) {
+        super(tokenMaterial, displayName, lore, speed, plugin);
         this.boatType = boatType == null ? org.bukkit.entity.Boat.Type.OAK : boatType;
-        spawn(location);
     }
 
     @Override
@@ -24,10 +28,11 @@ public class Boat extends Vehicle{
     }
 
     @Override
-    protected void setAbilities() {
+    protected void configureEntity() {
         if (!(this.entity instanceof org.bukkit.entity.Boat boat)) {
             return;
         }
+
         applyBaseControlSettings();
         boat.setBoatType(this.boatType);
         boat.setWorkOnLand(false);

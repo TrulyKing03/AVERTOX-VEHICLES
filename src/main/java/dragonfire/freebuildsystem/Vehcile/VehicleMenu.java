@@ -1,141 +1,297 @@
 package dragonfire.freebuildsystem.Vehcile;
 
-import org.avertox.AvertoxEssentialsV2;
-import org.avertox.Commands.CurrencyHandler;
-import org.avertox.Inventory.AvertoxInventory;
-import org.avertox.Inventory.InvItem;
-import org.bukkit.Location;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
-import org.jetbrains.annotations.NotNull;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemFlag;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
 
-import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-public class VehicleMenu extends AvertoxInventory implements CommandExecutor {
+public class VehicleMenu implements CommandExecutor, Listener {
+    private final JavaPlugin plugin;
     private final VehicleManager vehicleManager;
 
-    public VehicleMenu(String id, int rows, String title, AvertoxEssentialsV2 avE, boolean paginationEnabled, boolean border, InventoryOrder inventoryOrder, boolean openCommand, AvertoxInventory closeItem, VehicleManager vehicleManager) {
-        super(id, rows, title, avE, paginationEnabled, border, inventoryOrder, openCommand, closeItem);
+    private final String title;
+    private final int rows;
+    private final int horseSlot;
+    private final int boatStartSlot;
+    private final Material fillerMaterial;
+
+    public VehicleMenu(JavaPlugin plugin, VehicleManager vehicleManager) {
+        this.plugin = plugin;
         this.vehicleManager = vehicleManager;
-        addHorseEntry();
-        addBoatEntries();
-    }
 
-    private void addHorseEntry() {
-        VehicleManager.HorseVehicleConfig horseConfig = vehicleManager.getHorseVehicleConfig();
-        addInvItem(new InvItem(
-                horseConfig.getItem(),
-                "Horse",
-                true,
-                "Cost: " + horseConfig.getPrice() + " money",
-                "Speed: " + horseConfig.getSpeed()
-        ) {
-            @Override
-            public void clickableFunction(Player player) {
-                purchaseVehicle(
-                        player,
-                        horseConfig.getPrice(),
-                        location -> vehicleManager.createHorse(location),
-                        "You bought a horse for " + horseConfig.getPrice() + " money"
-                );
-            }
-        });
-    }
-
-    private void addBoatEntries() {
-        for (VehicleManager.BoatVehicleConfig boatConfig : vehicleManager.getBoatVehicleConfigs()) {
-            addInvItem(new InvItem(
-                    boatConfig.getItem(),
-                    boatConfig.getDisplayName(),
-                    true,
-                    "Cost: " + boatConfig.getPrice() + " money",
-                    "Type: " + boatConfig.getBoatType().name().toLowerCase(Locale.ROOT),
-                    "Speed: " + boatConfig.getSpeed()
-            ) {
-                @Override
-                public void clickableFunction(Player player) {
-                    purchaseVehicle(
-                            player,
-                            boatConfig.getPrice(),
-                            location -> vehicleManager.createBoat(location, boatConfig),
-                            "You bought a " + boatConfig.getDisplayName() + " for " + boatConfig.getPrice() + " money"
-                    );
-                }
-            });
-        }
-    }
-
-    private void purchaseVehicle(Player player, int price, VehicleFactory vehicleFactory, String successMessage) {
-        Inventory inventory = player.getInventory();
-        if (avE.getUitilFunctions().getEmtySlots(inventory) <= 0) {
-            player.sendMessage(avE.avertoxMessage("You need one free inventory slot."));
-            return;
-        }
-
-        if (!avE.getCurrencyHandler().transferCurrency(
-                CurrencyHandler.Mod.MINUS,
-                CurrencyHandler.CurrencyTyps.MONEY,
-                avE.getPlayerHandler().getPlayerByUUID(player.getUniqueId()),
-                price
-        )) {
-            player.sendMessage(avE.avertoxMessage("You do not have enough money."));
-            return;
-        }
-
-        Vehicle vehicle = vehicleFactory.create(null);
-        vehicleManager.registerVehicle(vehicle);
-        inventory.addItem(vehicle.itemStack);
-        player.sendMessage(avE.avertoxMessage(successMessage));
+        this.title = plugin.getConfig().getString("shop.title", "&6Avertox Vehicles");
+        this.rows = Math.max(1, Math.min(6, plugin.getConfig().getInt("shop.rows", 3)));
+        this.horseSlot = plugin.getConfig().getInt("shop.horse-slot", 11);
+        this.boatStartSlot = plugin.getConfig().getInt("shop.boat-start-slot", 13);
+        this.fillerMaterial = readMaterial(plugin.getConfig().getString("shop.filler-material", "GRAY_STAINED_GLASS_PANE"), Material.GRAY_STAINED_GLASS_PANE);
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
-        if (!command.getName().equalsIgnoreCase("vehicle")) {
-            return false;
-        }
-
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage("Only players can use this command.");
             return true;
         }
 
-        return openShop(player);
+        if (!player.hasPermission("avertoxvehicles.use")) {
+            player.sendMessage(colorize("&cYou do not have permission to use this command."));
+            return true;
+        }
+
+        if (args.length > 0 && args[0].equalsIgnoreCase("balance")) {
+            showBalance(player);
+            return true;
+        }
+
+        openShop(player);
+        return true;
     }
 
-    private boolean openShop(Player player) {
-        String[] openMethodNames = new String[]{"open", "openInventory", "show", "display"};
-
-        for (String methodName : openMethodNames) {
-            try {
-                Method method = this.getClass().getSuperclass().getMethod(methodName, Player.class);
-                method.invoke(this, player);
-                return true;
-            } catch (ReflectiveOperationException ignored) {
-                // Try next possible API variant from AvertoxInventory.
-            }
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getInventory().getHolder() instanceof VehicleMenuHolder holder)) {
+            return;
         }
 
-        try {
-            Method inventoryMethod = this.getClass().getSuperclass().getMethod("getInventory");
-            Object inventory = inventoryMethod.invoke(this);
-            if (inventory instanceof Inventory inv) {
-                player.openInventory(inv);
-                return true;
-            }
-        } catch (ReflectiveOperationException ignored) {
-            // Fallback message below.
+        event.setCancelled(true);
+
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
         }
 
-        player.sendMessage(avE.avertoxMessage("Vehicle shop could not be opened."));
-        return true;
+        int clickedSlot = event.getRawSlot();
+        if (clickedSlot < 0 || clickedSlot >= event.getInventory().getSize()) {
+            return;
+        }
+
+        ShopEntry entry = holder.entries.get(clickedSlot);
+        if (entry == null) {
+            return;
+        }
+
+        processPurchase(player, entry);
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (event.getInventory().getHolder() instanceof VehicleMenuHolder holder) {
+            holder.entries.clear();
+        }
+    }
+
+    private void openShop(Player player) {
+        int size = rows * 9;
+        VehicleMenuHolder holder = new VehicleMenuHolder();
+        Inventory inventory = Bukkit.createInventory(holder, size, colorize(title));
+        holder.inventory = inventory;
+
+        fillBackground(inventory);
+
+        int normalizedHorseSlot = normalizeSlot(horseSlot, size);
+        VehicleManager.HorseVehicleConfig horseConfig = vehicleManager.getHorseConfig();
+        holder.entries.put(normalizedHorseSlot, new ShopEntry(
+                "horse",
+                horseConfig.price(),
+                vehicleManager::buildHorseVehicle,
+                buildVehicleIcon(
+                        horseConfig.item(),
+                        horseConfig.displayName(),
+                        horseConfig.price(),
+                        horseConfig.speed(),
+                        "Horse"
+                )
+        ));
+        inventory.setItem(normalizedHorseSlot, holder.entries.get(normalizedHorseSlot).icon);
+
+        int slot = normalizeSlot(boatStartSlot, size);
+        for (VehicleManager.BoatVehicleConfig boatConfig : vehicleManager.getBoatConfigs()) {
+            if (slot >= size) {
+                break;
+            }
+            ShopEntry entry = new ShopEntry(
+                    "boat-" + boatConfig.boatType().name().toLowerCase(Locale.ROOT),
+                    boatConfig.price(),
+                    () -> vehicleManager.buildBoatVehicle(boatConfig),
+                    buildVehicleIcon(
+                            boatConfig.item(),
+                            boatConfig.displayName(),
+                            boatConfig.price(),
+                            boatConfig.speed(),
+                            prettyName(boatConfig.boatType().name()) + " Boat"
+                    )
+            );
+            holder.entries.put(slot, entry);
+            inventory.setItem(slot, entry.icon);
+            slot++;
+        }
+
+        int infoSlot = size - 5;
+        inventory.setItem(infoSlot, buildInfoItem(player));
+
+        player.openInventory(inventory);
+    }
+
+    private void processPurchase(Player player, ShopEntry entry) {
+        if (player.getInventory().firstEmpty() == -1) {
+            player.sendMessage(colorize("&cYou need at least one free inventory slot."));
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
+            return;
+        }
+
+        if (!vehicleManager.getWalletService().withdraw(player, entry.price)) {
+            String priceText = vehicleManager.getWalletService().format(entry.price);
+            player.sendMessage(colorize("&cNot enough funds. Required: &f" + priceText));
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
+            return;
+        }
+
+        Vehicle vehicle = entry.factory.create();
+        vehicleManager.registerOwnedVehicle(vehicle);
+        ItemStack token = vehicle.createToken();
+        player.getInventory().addItem(token);
+
+        String tokenName = "Vehicle";
+        if (token.hasItemMeta() && token.getItemMeta() != null && token.getItemMeta().getDisplayName() != null) {
+            tokenName = stripColor(token.getItemMeta().getDisplayName());
+        }
+        player.sendMessage(colorize("&aPurchased &f" + tokenName + "&a."));
+        showBalance(player);
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.2f);
+    }
+
+    private ItemStack buildVehicleIcon(Material material, String displayName, int price, double speed, String kind) {
+        Material iconMaterial = material == null ? Material.MINECART : material;
+        ItemStack item = new ItemStack(iconMaterial);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
+
+        meta.setDisplayName(colorize(displayName));
+
+        List<String> lore = new ArrayList<>();
+        lore.add(colorize("&7Kind: &f" + kind));
+        lore.add(colorize("&7Speed: &f" + speed));
+        lore.add(colorize("&7Price: &f" + vehicleManager.getWalletService().format(price)));
+        lore.add(colorize("&8Click to purchase"));
+        meta.setLore(lore);
+
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private ItemStack buildInfoItem(Player player) {
+        ItemStack item = new ItemStack(Material.NETHER_STAR);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
+
+        meta.setDisplayName(colorize("&eWallet"));
+        List<String> lore = new ArrayList<>();
+        lore.add(colorize("&7Balance: &f" + vehicleManager.getWalletService().format(vehicleManager.getWalletService().getBalance(player))));
+        lore.add(colorize("&8Use /vehicle balance"));
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private void fillBackground(Inventory inventory) {
+        ItemStack filler = new ItemStack(fillerMaterial);
+        ItemMeta fillerMeta = filler.getItemMeta();
+        if (fillerMeta != null) {
+            fillerMeta.setDisplayName(colorize("&8 "));
+            filler.setItemMeta(fillerMeta);
+        }
+
+        for (int i = 0; i < inventory.getSize(); i++) {
+            inventory.setItem(i, filler);
+        }
+    }
+
+    private int normalizeSlot(int slot, int inventorySize) {
+        if (slot < 0) {
+            return 0;
+        }
+        if (slot >= inventorySize) {
+            return inventorySize - 1;
+        }
+        return slot;
+    }
+
+    private void showBalance(Player player) {
+        String balance = vehicleManager.getWalletService().format(vehicleManager.getWalletService().getBalance(player));
+        player.sendMessage(colorize("&7Current balance: &f" + balance));
+    }
+
+    private Material readMaterial(String value, Material fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        Material material = Material.matchMaterial(value.toUpperCase(Locale.ROOT));
+        return material == null ? fallback : material;
+    }
+
+    private String prettyName(String input) {
+        String[] parts = input.replace('_', ' ').toLowerCase(Locale.ROOT).split("\\s+");
+        StringBuilder builder = new StringBuilder();
+        for (String part : parts) {
+            if (part.isBlank()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(' ');
+            }
+            builder.append(part.substring(0, 1).toUpperCase(Locale.ROOT));
+            builder.append(part.substring(1));
+        }
+        return builder.toString();
+    }
+
+    private String stripColor(String input) {
+        return ChatColor.stripColor(input == null ? "Vehicle" : input);
+    }
+
+    private String colorize(String text) {
+        return ChatColor.translateAlternateColorCodes('&', text);
+    }
+
+    private record ShopEntry(String id, int price, VehicleFactory factory, ItemStack icon) {
     }
 
     @FunctionalInterface
     private interface VehicleFactory {
-        Vehicle create(Location location);
+        Vehicle create();
+    }
+
+    private static final class VehicleMenuHolder implements InventoryHolder {
+        private Inventory inventory;
+        private final Map<Integer, ShopEntry> entries = new HashMap<>();
+
+        @Override
+        public Inventory getInventory() {
+            return inventory;
+        }
     }
 }

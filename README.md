@@ -1,62 +1,57 @@
 # AVERTOX-VEHICLES
 
-A configurable vehicle system for Minecraft servers focused on **horses and vanilla boat entities**.
+A polished Spigot vehicle plugin built around vanilla entities, with configurable horse + boat shop entries and clean in-game controls.
 
-## Highlights
+## What Works
 
-- Supports horses and boats as shop-buyable vehicles.
-- Uses **native Minecraft boat entities** (`org.bukkit.entity.Boat`) with no external resource packs.
-- Supports configurable boat variants per entry (for example `oak`, `spruce`, `birch`) through `config.yml`.
-- Shares movement speed control in the `Vehicle` base class so horse and boat handling stays consistent.
-- Vehicle tokens are keyed per vehicle instance via persistent data.
+- Horse and boat vehicles are fully supported in one shop.
+- Boats use native Minecraft boat entities only (`org.bukkit.entity.Boat`).
+- Boat variants are configurable per entry (oak, spruce, birch, and more).
+- Shared base movement/control behavior is implemented in `Vehicle` so horses and boats stay consistent.
+- Vehicle tokens are bound with PersistentDataContainer IDs for reliable spawn/despawn handling.
 
-## Commands
+## Player Flow
 
-- `/vehicle` - Opens the vehicle shop.
+1. Run `/vehicle` to open the vehicle shop.
+2. Click a horse or boat variant to buy a vehicle token.
+3. Right-click token: spawn your vehicle.
+4. Left-click token: despawn your vehicle.
 
-## Vehicle Token Controls
+Optional command:
 
-- **Right-click** with a vehicle token: spawn vehicle (if not currently spawned).
-- **Left-click** with a vehicle token: despawn current vehicle entity.
+- `/vehicle balance` shows current wallet balance.
 
-## Configuration
+## Config Highlights
 
-Default config file: [`src/main/resources/config.yml`](src/main/resources/config.yml)
+File: `src/main/resources/config.yml`
 
-Example section:
+- `vehicles.horse.*` controls horse item, price, speed, style, color, armor.
+- `vehicles.boats.<id>.*` controls each boat listing (type, item, price, speed, name).
+- `shop.*` controls menu title, layout slots, filler material.
+- `economy.*` controls internal wallet behavior.
 
-```yml
-vehicles:
-  horse:
-    item: HORSE_SPAWN_EGG
-    price: 10000
-    speed: 0.225
+## Build
 
-  boats:
-    oak:
-      enabled: true
-      display-name: Oak Boat
-      item: OAK_BOAT
-      type: OAK
-      price: 6000
-      speed: 0.40
+```bash
+mvn clean package
 ```
 
-## Notes
+Jar output:
 
-- Boat recipes are removed in `VehicleManager` so boats are acquired via the vehicle system.
-- The `/vehicle` shop is wired through `VehicleMenu` and `VehicleManager`.
+- `target/avertox-vehicles-1.0.0.jar`
 
-## File Overview
+## Main Classes
 
-- `Vehicle.java` - shared vehicle lifecycle, keying, and base control settings
-- `Horse.java` - horse-specific setup
-- `Boat.java` - vanilla boat entity setup + boat type support
-- `VehicleManager.java` - registration, config loading, interaction handling
-- `VehicleMenu.java` - shop entries and purchasing flow
+- `Vehicle.java` shared lifecycle + token key + base controls
+- `Horse.java` horse-specific setup
+- `Boat.java` boat-specific setup with `Boat.Type`
+- `VehicleManager.java` config loading, registry, interaction listeners
+- `VehicleMenu.java` polished GUI shop + purchase flow
+- `WalletService.java` built-in money backend
+- `AvertoxVehiclesPlugin.java` plugin bootstrap
 
 ## Reference
 
-README structure/style referenced from:
+README style reference requested and followed from:
 
 - https://github.com/TrulyKing03/AVERTOX-INVENTORY?tab=readme-ov-file
