@@ -125,11 +125,13 @@ public class VehicleManager implements Listener {
         return vehiclesById.get(vehicleId);
     }
 
-    public void spawnVehicle(Vehicle vehicle, Location location) {
+    public boolean spawnVehicle(Vehicle vehicle, Location location) {
         Entity entity = vehicle.spawn(location);
-        if (entity != null) {
-            vehiclesByEntityId.put(entity.getUniqueId(), vehicle);
+        if (entity == null) {
+            return false;
         }
+        vehiclesByEntityId.put(entity.getUniqueId(), vehicle);
+        return true;
     }
 
     public void despawnVehicle(Vehicle vehicle) {
@@ -204,8 +206,11 @@ public class VehicleManager implements Listener {
             return;
         }
 
-        spawnVehicle(vehicle, player.getLocation());
-        player.sendMessage(colorize("&aVehicle spawned."));
+        if (spawnVehicle(vehicle, player.getLocation())) {
+            player.sendMessage(colorize("&aVehicle spawned."));
+        } else {
+            player.sendMessage(colorize("&cVehicle could not be spawned here."));
+        }
         event.setCancelled(true);
     }
 

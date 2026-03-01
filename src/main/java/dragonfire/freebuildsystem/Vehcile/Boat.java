@@ -3,6 +3,7 @@ package dragonfire.freebuildsystem.Vehcile;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
@@ -24,7 +25,7 @@ public class Boat extends Vehicle {
 
     @Override
     protected Entity spawnEntity(Location location) {
-        return location.getWorld().spawn(location, org.bukkit.entity.Boat.class);
+        return location.getWorld().spawnEntity(location, resolveBoatEntityType());
     }
 
     @Override
@@ -36,5 +37,17 @@ public class Boat extends Vehicle {
         applyBaseControlSettings();
         boat.setBoatType(this.boatType);
         boat.setWorkOnLand(false);
+    }
+
+    private EntityType resolveBoatEntityType() {
+        String variantType = this.boatType == org.bukkit.entity.Boat.Type.BAMBOO
+                ? "BAMBOO_RAFT"
+                : this.boatType.name() + "_BOAT";
+
+        try {
+            return EntityType.valueOf(variantType);
+        } catch (IllegalArgumentException ignored) {
+            return EntityType.BOAT;
+        }
     }
 }

@@ -17,6 +17,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
 
 public abstract class Vehicle {
     private static final String VEHICLE_ID_KEY = "vehicle-id";
@@ -75,9 +76,23 @@ public abstract class Vehicle {
         Location spawnLocation = location.clone().add(location.getDirection().normalize().multiply(1.5D));
         spawnLocation.setPitch(0.0F);
 
-        this.entity = spawnEntity(spawnLocation);
-        configureEntity();
-        return this.entity;
+        Entity spawned = null;
+        try {
+            spawned = spawnEntity(spawnLocation);
+            if (spawned == null) {
+                return null;
+            }
+            this.entity = spawned;
+            configureEntity();
+            return this.entity;
+        } catch (RuntimeException exception) {
+            if (spawned != null && spawned.isValid()) {
+                spawned.remove();
+            }
+            this.entity = null;
+            this.plugin.getLogger().log(Level.SEVERE, "Failed to spawn vehicle " + this.vehicleId + ".", exception);
+            return null;
+        }
     }
 
     protected abstract Entity spawnEntity(Location location);
